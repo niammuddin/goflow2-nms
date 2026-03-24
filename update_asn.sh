@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Pindah ke direktori project
-cd /home/niam/flow-monitor
+cd /home/user/flow-monitor
 
 echo "Mulai Update ASN: $(date)"
 
@@ -19,4 +19,4 @@ echo "Selesai Update ASN: $(date)"
 echo "----------------------------------------"
 
 
-# 0 2 * * * /home/niam/flow-monitor/update_asn.sh >> /home/niam/flow-monitor/asn_update.log 2>&1
+# 0 2 * * * /home/user/flow-monitor/update_asn.sh >> /home/user/flow-monitor/asn_update.log 2>&1
