@@ -1,0 +1,99 @@
+# 1. Deklarasi Named Volumes (Solusi mutlak untuk permission LXC)
+volumes:
+  kafka_data:
+  clickhouse_data:
+  grafana_data:
+
+services:
+  kafka:
+      image: apache/kafka:latest
+      restart: unless-stopped
+      network_mode: "host"
+      environment:
+        # --- KONFIGURASI KRAFT MODE (OFFICIAL APACHE) ---
+        KAFKA_NODE_ID: 1
+        KAFKA_PROCESS_ROLES: 'broker,controller'
+        KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+        KAFKA_CONTROLLER_QUORUM_VOTERS: '1@127.0.0.1:29093'
+        CLUSTER_ID: 'ciWo7IWazngRchmPES6q5A'
+        # ------------------------------------------------
+        # Listeners disesuaikan untuk localhost (Host Network)
+        KAFKA_LISTENERS: INTERNAL://127.0.0.1:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://127.0.0.1:29093
+        KAFKA_ADVERTISED_LISTENERS: INTERNAL://127.0.0.1:29092,EXTERNAL://127.0.0.1:9092
+        KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+        KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+        KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        
+        # Direktori penyimpanan standar untuk di-mount
+        KAFKA_LOG_DIRS: '/var/lib/kafka/data'
+        
+        # Optimasi Retention & RAM
+        KAFKA_LOG_RETENTION_HOURS: 2
+        KAFKA_LOG_RETENTION_BYTES: 1073741824
+        KAFKA_HEAP_OPTS: "-Xmx1G -Xms512M"
+        TZ: Asia/Jakarta
+      volumes:
+        - kafka_data:/var/lib/kafka/data
+      logging:
+        driver: "json-file"
+        options:
+          max-size: "50m"
+          max-file: "3"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    restart: unless-stopped
+    network_mode: "host"
+    environment:
+      TZ: Asia/Jakarta
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    # Blok "ports" dihilangkan
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    depends_on:
+      - kafka
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    network_mode: "host"
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
+      - TZ=Asia/Jakarta
+    volumes:
+      - grafana_data:/var/lib/grafana
+    # Blok "ports" dihilangkan
+    depends_on:
+      - clickhouse
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  goflow2:
+    image: netsampler/goflow2:latest
+    restart: unless-stopped
+    network_mode: "host"
+    environment:
+      TZ: Asia/Jakarta
+    command:
+      - "-format=json"
+      - "-transport=kafka"
+      - "-transport.kafka.brokers=127.0.0.1:9092"
+      - "-transport.kafka.topic=flows"
+    depends_on:
+      - kafka
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
